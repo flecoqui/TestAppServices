@@ -1,9 +1,9 @@
-# TestAppServices: Universal Windows Platform (UWP) AppService Sample Application (client/server)
+# TestAppServices: AppService sample for communication between UWP and Win32 Applications (client/server)
 
 Overview
 --------------
 This repository contains demonstrations of UWP AppService implementations to allow communication:<p/>
-	-   **Step 1: UWP App to UWP App**: Communication between two UWP Application</p> 
+	-   **Step 1: UWP App to UWP App**: Communication between two UWP Applications</p> 
 	-   **Step 2: UWP App to Win32 App**: Communication between one UWP Application and one Win32 Application using Desktop Bridge</p> 
 
 
@@ -41,50 +41,52 @@ Once the applications for each step are installed on your device, you can launch
 
 ![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1.png)
 
-For Step 1, the 2 UWP applications will use a AppService channel to exchange messages. Each application needs to book a communication channel with the AppService.
+For Step 1, the 2 UWP applications will use an AppService channel to exchange messages. Each application needs to book a communication channel with the AppService.
 By default, the AppService is embedded in the AppServiceServerApp, the communication between the AppServiceServerApp and the AppService use a local channel. On the otherhand, the communication between the AppServiceClientApp and the AppService uses a remote channel.
 Once the AppServiceServerApp and the AppServiceClientApp have initialized the communication with the AppService, the AppService will forward:
 - the data messages received on the local channel to the remote channel,  
 - the data messages received on the remote channel to the local channel.
 
 1. Launch the AppServiceClientApp Application, if the Server Application is not installed on the same machine, click on the button **Install AppService Server App** to install the server application from Windows Store.
-Once the Server Application is installed, you can launch the Server Application using LaunchUriAsync using the Uri associated with the Server Application **appserviceserverapp:\\**.
+Once the Server Application is installed, you can launch the Server Application using LaunchUriAsync using the Uri associated with the Server Application **appserviceserverapp:\\\\**.
 Clicking on button **Connect to AppService Server App** you establish a communication channel with the AppService running with the Application Server.
 
 ![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp.png)
 
-2. Once the communication channel is established with the AppService, you can send an Init command to the AppService, in this sample application, this command is simple, you can use this initialization process to authentified the client and server application.
-
-![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_1.png)
-
-3. Once the initialization phase is done, you can send the message to the Server App through the AppService. If on Server side, the Server Application is not synchronized with the AppService, this step will fail.
-
-![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_2.png)
-
-4. You can check if the message has been received by the Server App reading the logs.
-
-![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_3.png)
-
-5. On the server side, it's almost the same initialization. Click on button **Connect to AppService** to establish a communication channel with the AppService.
+2. On the server side, it's almost the same initialization. Click on button **Connect to AppService** to establish a communication channel with the AppService.
 
 ![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceServerApp.png)
 
-5. Click on button **Send Init Command to AppService** to send an Init command to the AppService.
+3. Once the communication channel is established with the AppService, you can send an Init command to the AppService, in this sample application, this command is simple, you can use this initialization process to authentified the client and server application.
+
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_1.png)
+
+4. On the server side, click on button **Send Init Command to AppService** to send an Init command to the AppService.
 
 ![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceServerApp_1.png)
 
-6. Once the communication with the AppService is initialized, you can send the message to the Client App through the AppService. If on Client side, the Client Application is not synchronized with the AppService, this step will fail.
+
+5. Once the initialization phase is done, you can send the message to the Server App through the AppService. If on Server side, the Server Application is not synchronized with the AppService, this step will fail.
+
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_2.png)
+
+6. You can check if the message has been received by the Server App reading the logs.
+
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_3.png)
+
+
+7. On the server side, once the communication with the AppService is initialized, you can send the message to the Client App through the AppService. If on Client side, the Client Application is not synchronized with the AppService, this step will fail.
 
 ![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceServerApp_2.png)
 
-7. You can check if the message has been received by the Client App reading the logs.
+8. On the server side, You can check if the message has been received by the Client App reading the logs.
 
 ![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceServerApp_3.png)
 
 
 ### Step 2: Communication between UWP Application and Win32 Application using AppServices
 
-For Step 2, one UWP application will use a AppService channel to exchange messages with a Win32 Application. Like for Step 1, each application needs to book a communication channel with the AppService.
+For Step 2, one UWP application will use an AppService channel to exchange messages with a Win32 Application. Like for Step 1, each application needs to book a communication channel with the AppService.
 By default, the AppService is embedded in the AppServiceServerApp which is a UWP Application with a Win32 component implementing the AppSerivce Client on the Server side. The communication between the Win32 component and the AppService use a local channel. On the otherhand, the communication between the AppServiceClientApp and the AppService uses a remote channel.
 Once the AppServiceServerApp and the AppServiceClientApp have initialized the communication with the AppService, the AppService will forward:
 - the data messages received on the local channel to the remote channel,  
