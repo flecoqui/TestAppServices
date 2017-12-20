@@ -5,33 +5,43 @@ using System.Text;
 using System.Threading.Tasks;
 using Windows.ApplicationModel.AppService;
 using Windows.ApplicationModel.Background;
+using System.Collections.Concurrent;
 using Windows.Foundation.Collections;
 
 namespace AppServiceTask
 {
+    class ConnectionContext
+    {
+        public bool bConnected;
+        public string CallerPackage;
+        public AppServiceConnection Connection;
+    }
     public sealed class AppServiceTask : IBackgroundTask
     {
         BackgroundTaskDeferral serviceDeferral;
-        static AppServiceConnection localConnection;
-        static bool localConnectionInitialized = false;
-        static string localIPAddress = string.Empty;
-        static AppServiceConnection remoteConnection;
-        static bool remoteConnectionInitialized = false;
-        static string remoteIPAddress = string.Empty;
-        static Dictionary<Guid, AppServiceConnection> connectionList;
+        static ConcurrentDictionary<Guid, ConnectionContext> localConnectionList;
+
+        static ConcurrentDictionary<Guid, ConnectionContext> remoteConnectionList;
         public void Run(IBackgroundTaskInstance taskInstance)
         {
 
             if (taskInstance != null)
             {
-                System.Diagnostics.Debug.WriteLine("BackgroundTask Run for TaskID: " + taskInstance.InstanceId.ToString() + " Task name: " + taskInstance.Task.Name);
+                System.Diagnostics.Debug.WriteLine("BackgroundTask Run for TaskID: " + taskInstance.InstanceId.ToString() );
+                
                 //Take a service deferral so the service isn't terminated
                 serviceDeferral = taskInstance.GetDeferral();
 
-                if(connectionList==null)
+                if(localConnectionList == null)
                 {
-                    connectionList = new Dictionary<Guid, AppServiceConnection>();
+                    localConnectionList = new ConcurrentDictionary<Guid, ConnectionContext>();
                 }
+
+                if (remoteConnectionList == null)
+                {
+                    remoteConnectionList = new ConcurrentDictionary<Guid, ConnectionContext>();
+                }
+
                 taskInstance.Canceled += OnTaskCanceled;
 
 
@@ -40,54 +50,279 @@ namespace AppServiceTask
                 {
                     if ((details.IsRemoteSystemConnection == true)||(!string.Equals(details.CallerPackageFamilyName,AppServiceTaskConstant.APPSERVICEPACKAGEFAMILY)))
                     {
-                        remoteConnection = details.AppServiceConnection;
-                        remoteConnection.RequestReceived += OnRequestReceived;
-                        remoteConnection.ServiceClosed += RemoteConnection_ServiceClosed;
+                        ConnectionContext c = new ConnectionContext();
+                        c.Connection = details.AppServiceConnection;
+                        c.CallerPackage = details.CallerPackageFamilyName;
+                        c.bConnected = false;
+                        c.Connection.RequestReceived += OnRequestReceived;
+                        c.Connection.ServiceClosed += RemoteConnection_ServiceClosed;
+                        AddConnection(true, taskInstance.InstanceId, c);
                     }
                     else
                     {
-                        localConnection = details.AppServiceConnection;
-                        localConnection.RequestReceived += OnRequestReceived;
-                        localConnection.ServiceClosed += LocalConnection_ServiceClosed;
+                        ConnectionContext c = new ConnectionContext();
+                        c.Connection = details.AppServiceConnection;
+                        c.CallerPackage = details.CallerPackageFamilyName;
+                        c.bConnected = false;
+                        c.Connection.RequestReceived += OnRequestReceived;
+                        c.Connection.ServiceClosed += LocalConnection_ServiceClosed;
+                        AddConnection(false, taskInstance.InstanceId, c);
                     }
-                    if(!connectionList.ContainsKey(taskInstance.InstanceId))
-                        connectionList.Add(taskInstance.InstanceId, details.AppServiceConnection);
-                    else
-                    {
 
-                        System.Diagnostics.Debug.WriteLine("AppService Task loaded Error");
-                    }
                 }
                 System.Diagnostics.Debug.WriteLine("AppService Task loaded");
             }
         }
-        void CloseLocalConnection()
+        bool AddConnection(bool bRemote, Guid id, ConnectionContext c)
         {
-            if (localConnection != null)
+            bool result = false;
+            if(bRemote)
             {
-                localConnection.RequestReceived -= OnRequestReceived;
-                localConnection.ServiceClosed -= LocalConnection_ServiceClosed;
-                localConnection = null;
-                System.Diagnostics.Debug.WriteLine("AppService Task unloaded for local connectionx");
+                if (!remoteConnectionList.ContainsKey(id))
+                    remoteConnectionList.TryAdd(id, c);
+                else
+                    remoteConnectionList[id] = c;
+                result = true;
             }
+            else
+            {
+                if(localConnectionList.Count>0)
+                {
+                    // Only one local connection is possible
+                    CloseAllLocalConnection();
+                }
+                if (localConnectionList.Count == 0)
+                {
+                    if (!localConnectionList.ContainsKey(id))
+                        localConnectionList.TryAdd(id, c);
+                    else
+                        localConnectionList[id] = c;
+                    result = true;
+                }
+                else
+                    result = false;
+            }
+            if (result == true)
+                System.Diagnostics.Debug.WriteLine("CreateConnection for TaskID: " + id.ToString() + " successful");
+            else
+                System.Diagnostics.Debug.WriteLine("CreateConnection for TaskID: " + id.ToString() + " failed");
+
+            return result; 
         }
-        void CloseRemoteConnection()
+        bool RemoveConnection(bool bRemote, Guid id)
         {
-            if (remoteConnection != null)
+            bool result = false;
+            if (bRemote)
             {
-                remoteConnection.RequestReceived -= OnRequestReceived;
-                remoteConnection.ServiceClosed -= RemoteConnection_ServiceClosed;
-                remoteConnection = null;
-                System.Diagnostics.Debug.WriteLine("AppService Task unloaded for remote connection");
+                if (remoteConnectionList.ContainsKey(id))
+                {
+                    ConnectionContext c;
+                    if(remoteConnectionList.TryRemove(id, out c)==true)
+                        result = true;
+
+                }
             }
+            else
+            {
+                if (localConnectionList.ContainsKey(id))
+                {
+                    ConnectionContext c;
+                    if (localConnectionList.TryRemove(id, out c) == true)
+                        result = true;
+                }
+            }
+            return result;
+        }
+        bool CloseConnection(bool bRemote, AppServiceConnection c)
+        {
+            bool bResult = false;
+            if(bRemote)
+            {
+                if (remoteConnectionList != null)
+                {
+                    foreach (var val in remoteConnectionList)
+                    {
+                        if (val.Value.Connection == c)
+                        {
+                            val.Value.Connection.RequestReceived -= OnRequestReceived;
+                            val.Value.Connection.ServiceClosed -= RemoteConnection_ServiceClosed;
+                            val.Value.Connection = null;
+                            val.Value.bConnected = false;
+                            if(RemoveConnection(true, val.Key)==true)
+                                bResult = true;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (localConnectionList != null)
+                {
+                    foreach(var val in localConnectionList)
+                    {
+                        if(val.Value.Connection == c)
+                        {
+                            val.Value.Connection.RequestReceived -= OnRequestReceived;
+                            val.Value.Connection.ServiceClosed -= LocalConnection_ServiceClosed;
+                            val.Value.Connection = null;
+                            val.Value.bConnected = false;
+                            if(RemoveConnection(false, val.Key)==true)
+                                bResult = true;
+                        }
+                    }
+                }
+            }
+            return bResult;
+        }
+        bool CloseConnection(Guid id)
+        {
+            bool bResult = false;
+            if (remoteConnectionList != null)
+            {
+                foreach (var val in remoteConnectionList)
+                {
+                    if (val.Key == id)
+                    {
+                        val.Value.Connection.RequestReceived -= OnRequestReceived;
+                        val.Value.Connection.ServiceClosed -= RemoteConnection_ServiceClosed;
+                        val.Value.Connection = null;
+                        val.Value.bConnected = false;
+                        if(RemoveConnection(true, val.Key)==true)
+                            bResult = true;
+                    }
+                }
+            }
+            if (localConnectionList != null)
+            {
+                foreach (var val in localConnectionList)
+                {
+                    if (val.Key == id)
+                    {
+                        val.Value.Connection.RequestReceived -= OnRequestReceived;
+                        val.Value.Connection.ServiceClosed -= LocalConnection_ServiceClosed;
+                        val.Value.Connection = null;
+                        val.Value.bConnected = false;
+                        if(RemoveConnection(false, val.Key)==true)
+                            bResult = true;
+                    }
+                }
+            }
+            if(bResult==true)
+            System.Diagnostics.Debug.WriteLine("CloseConnection for TaskID: " + id.ToString() + " successful");
+            else
+            System.Diagnostics.Debug.WriteLine("CloseConnection for TaskID: " + id.ToString() + " failed");
+            return bResult;
+        }
+        bool CloseAllLocalConnection()
+        {
+            bool bResult = false;
+            if (localConnectionList != null)
+            {
+                foreach (var val in localConnectionList)
+                {
+                    val.Value.Connection.RequestReceived -= OnRequestReceived;
+                    val.Value.Connection.ServiceClosed -= LocalConnection_ServiceClosed;
+                    val.Value.Connection = null;
+                    val.Value.bConnected = false;
+                    if (RemoveConnection(false, val.Key) == true)
+                        bResult = true;
+                }
+            }
+            if (bResult == true)
+                System.Diagnostics.Debug.WriteLine("CloseAllConnection: successful");
+            else
+                System.Diagnostics.Debug.WriteLine("CloseAllConnection: failed");
+            return bResult;
         }
         private void LocalConnection_ServiceClosed(AppServiceConnection sender, AppServiceClosedEventArgs args)
         {
-            CloseLocalConnection();
+            CloseConnection(false, sender);
         }
         private void RemoteConnection_ServiceClosed(AppServiceConnection sender, AppServiceClosedEventArgs args)
         {
-            CloseRemoteConnection();
+            CloseConnection(true, sender);
+        }
+        async System.Threading.Tasks.Task<bool> SendMessage(bool bRemote, ValueSet message)
+        {
+            bool bResult = false;
+            int successCounter = 0;
+            int errorCounter = 0;
+            if(bRemote == true)
+            {
+
+                if (remoteConnectionList != null)
+                {
+                    foreach (var val in remoteConnectionList)
+                    {
+                        if ((val.Value.bConnected == true)&&(val.Value.Connection != null))
+                        {
+                            AppServiceResponse resp = await val.Value.Connection.SendMessageAsync(message);
+                            if (resp.Status == AppServiceResponseStatus.Success)
+                                successCounter++;
+                            else
+                                errorCounter++;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (localConnectionList != null)
+                {
+                    foreach (var val in localConnectionList)
+                    {
+                        if ((val.Value.bConnected == true) && (val.Value.Connection != null))
+                        {
+                            AppServiceResponse resp = await val.Value.Connection.SendMessageAsync(message);
+                            if (resp.Status == AppServiceResponseStatus.Success)
+                                successCounter++;
+                            else
+                                errorCounter++;
+                        }
+                    }
+                }
+            }
+
+            if((successCounter>0)&&(errorCounter==0))
+                bResult = true;
+            return bResult;
+        }
+        bool SetConnected(bool bRemote, AppServiceConnection connection, bool bInitialized)
+        {
+            bool bResult = false;
+            if (bRemote == true)
+            {
+
+                if (remoteConnectionList != null)
+                {
+                    foreach (var val in remoteConnectionList)
+                    {
+                        if ((val.Value.bConnected == false) && (val.Value.Connection == connection))
+                        {
+                            val.Value.bConnected = true;
+                            bResult = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (localConnectionList != null)
+                {
+                    foreach (var val in localConnectionList)
+                    {
+                        if ((val.Value.bConnected == false) && (val.Value.Connection == connection))
+                        {
+                            val.Value.bConnected = true;
+                            bResult = true;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            return bResult;
         }
         async void OnRequestReceived(AppServiceConnection sender, AppServiceRequestReceivedEventArgs args)
         {
@@ -106,18 +341,16 @@ namespace AppServiceTask
                         if (string.Equals(s, AppServiceTaskConstant.COMMAND_FIELD_DATA_VALUE))
                         {
                             if ((inputs.ContainsKey(AppServiceTaskConstant.DATA_FIELD)) &&
-                            (inputs.ContainsKey(AppServiceTaskConstant.SOURCE_FIELD)) &&
-                            (inputs.ContainsKey(AppServiceTaskConstant.IPSOURCE_FIELD))) 
+                            (inputs.ContainsKey(AppServiceTaskConstant.SOURCE_FIELD)) ) 
                             {
                                 string data = (string)inputs[AppServiceTaskConstant.DATA_FIELD];
                                 string source = (string)inputs[AppServiceTaskConstant.SOURCE_FIELD];
-                                string ip = (string)inputs[AppServiceTaskConstant.IPSOURCE_FIELD];
                                 if ((string.Equals(source, AppServiceTaskConstant.SOURCE_FIELD_LOCAL_VALUE)) &&
-                                    (remoteConnection != null) &&
-                                    (remoteConnectionInitialized == true))
+                                    (remoteConnectionList != null) &&
+                                    (remoteConnectionList.Count > 0))
                                 {
-                                    AppServiceResponse resp = await remoteConnection.SendMessageAsync(inputs);
-                                    if (resp.Status == AppServiceResponseStatus.Success)
+                                    bool res = await SendMessage(true, inputs);
+                                    if (res == true)
                                     {
                                         System.Diagnostics.Debug.WriteLine("AppService Task data sent");
                                         response = AppServiceTaskConstant.RESULT_FIELD_OK_VALUE;
@@ -126,11 +359,11 @@ namespace AppServiceTask
                                         response = AppServiceTaskConstant.RESULT_FIELD_ERROR_VALUE;
                                 }
                                 else if ((string.Equals(source, AppServiceTaskConstant.SOURCE_FIELD_REMOTE_VALUE)) &&
-                                    (localConnection != null)&&
-                                    (localConnectionInitialized == true))
+                                    (localConnectionList != null)&&
+                                    (localConnectionList.Count > 0))
                                 {
-                                    AppServiceResponse resp = await localConnection.SendMessageAsync(inputs);
-                                    if (resp.Status == AppServiceResponseStatus.Success)
+                                    bool res = await SendMessage(false, inputs);
+                                    if (res == true)
                                     {
                                         System.Diagnostics.Debug.WriteLine("AppService Task data sent");
                                         response = AppServiceTaskConstant.RESULT_FIELD_OK_VALUE;
@@ -145,28 +378,23 @@ namespace AppServiceTask
                         else if (string.Equals(s, AppServiceTaskConstant.COMMAND_FIELD_INIT_VALUE))
                         {
                             // Background task started
-                            if ((inputs.ContainsKey(AppServiceTaskConstant.SOURCE_FIELD)) && 
-                                (inputs.ContainsKey(AppServiceTaskConstant.IPSOURCE_FIELD)))
+                            if ((inputs.ContainsKey(AppServiceTaskConstant.SOURCE_FIELD)) )
                             {
 
                                 string source = (string)inputs[AppServiceTaskConstant.SOURCE_FIELD];
-                                string ip = (string)inputs[AppServiceTaskConstant.IPSOURCE_FIELD];
                                 if( (string.Equals(source, AppServiceTaskConstant.SOURCE_FIELD_LOCAL_VALUE))&&
-                                    (localConnection != null))
+                                    (localConnectionList != null))
                                 {
-                                    localIPAddress = ip;
-                                    localConnectionInitialized = true;
+                                    SetConnected(false, sender, true);
                                     response =  AppServiceTaskConstant.RESULT_FIELD_OK_VALUE;
-                                    System.Diagnostics.Debug.WriteLine("AppService Task Initialized");
-
+                                    System.Diagnostics.Debug.WriteLine("AppService Connection established");
                                 }
                                 else if ((string.Equals(source, AppServiceTaskConstant.SOURCE_FIELD_REMOTE_VALUE)) &&
-                                    (remoteConnection != null))
+                                    (remoteConnectionList != null))
                                 {
-                                    remoteIPAddress = ip;
-                                    remoteConnectionInitialized = true;
+                                    SetConnected(true, sender, true);
                                     response = AppServiceTaskConstant.RESULT_FIELD_OK_VALUE;
-                                    System.Diagnostics.Debug.WriteLine("AppService Task Initialized");
+                                    System.Diagnostics.Debug.WriteLine("AppService Connection established");
                                 }
                                 else
                                     response = AppServiceTaskConstant.RESULT_FIELD_ERROR_VALUE;
@@ -194,14 +422,7 @@ namespace AppServiceTask
         {
             if (serviceDeferral != null)
             {
-                if (connectionList.ContainsKey(sender.InstanceId))
-                {
-                    AppServiceConnection loc = connectionList[sender.InstanceId];
-                    if(loc == localConnection)
-                        CloseLocalConnection();
-                    if (loc == remoteConnection)
-                        CloseRemoteConnection();
-                }
+                CloseConnection(sender.InstanceId);
                 serviceDeferral.Complete();
                 serviceDeferral = null;
             }

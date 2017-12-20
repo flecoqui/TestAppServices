@@ -19,13 +19,14 @@
             <ColumnDefinition Width="310"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-        <Button Grid.Row="0"  IsEnabled = "False" Content="Load AppService" x:Name="loadAppServiceButton" ToolTipService.ToolTip="Load App service" IsTabStop="True" Margin="1,1,1,1" Click="LoadAppService_Click" />
-        <Button Grid.Row="1" IsEnabled = "False" Content="Init AppService" x:Name="initAppServiceButton" ToolTipService.ToolTip="Init App service" IsTabStop="True" Margin="1,1,1,1" Click="InitAppService_Click" />
+        <Button Grid.Row="0"  IsEnabled = "False" Content="Connect to AppService" x:Name="ConnectAppServiceButton" ToolTipService.ToolTip="Connect App service" IsTabStop="True" Margin="1,1,1,1" Click="ConnectAppService_Click" />
+        <Button Grid.Row="1" IsEnabled = "False" Content="Send Init Command to AppService" x:Name="initAppServiceButton" ToolTipService.ToolTip="Init App service" IsTabStop="True" Margin="1,1,1,1" Click="InitAppService_Click" />
         <Button Grid.Row="2" IsEnabled = "False" Content="Send Data to AppService" x:Name="sendDataAppServiceButton" ToolTipService.ToolTip="Send Data to App service" IsTabStop="True" Margin="1,1,1,1" Click="SendDataAppService_Click" />
-        <Button Grid.Row="3" IsEnabled = "False" Content="Unload AppService" x:Name="unloadAppServiceButton" ToolTipService.ToolTip="Unload App Service" IsTabStop="True" Margin="1,1,1,1" Click="UnloadAppService_Click" />
+        <TextBox Grid.Row="2" Grid.Column="1" IsEnabled = "False" Text="Hello from Server App" x:Name="DataText" ToolTipService.ToolTip="Data Text to be sent to App service" IsTabStop="True" Margin="1,1,1,1" />
+        <Button Grid.Row="3" IsEnabled = "False" Content="Disconnect from AppService" x:Name="DisconnectAppServiceButton" ToolTipService.ToolTip="Disconnect App Service" IsTabStop="True" Margin="1,1,1,1" Click="DisconnectAppService_Click" />
 
         <TextBox  x:Name="logs" 
-             Grid.Row="4" Grid.ColumnSpan="2" Foreground="{ThemeResource ButtonForegroundThemeBrush}" IsTabStop="True" Margin="2,2,2,2"   MaxHeight="640" MinHeight="100"  ScrollViewer.HorizontalScrollBarVisibility="Auto"  ScrollViewer.VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" AcceptsReturn="True" FontSize="12" IsReadOnly="True"  Visibility="Visible" Text="" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" TabIndex="18">
+             Grid.Row="4" Grid.ColumnSpan="2" Foreground="{ThemeResource ButtonForegroundThemeBrush}" IsTabStop="True" Margin="2,2,2,2"   MinHeight="100"  ScrollViewer.HorizontalScrollBarVisibility="Auto"  ScrollViewer.VerticalScrollBarVisibility="Auto" TextWrapping="NoWrap" AcceptsReturn="True" FontSize="12" IsReadOnly="True"  Visibility="Visible" Text="" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" TabIndex="18">
         </TextBox>
     </Grid>
 </Page>

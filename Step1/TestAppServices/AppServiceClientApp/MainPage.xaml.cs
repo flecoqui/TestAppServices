@@ -41,29 +41,50 @@ namespace AppServiceClientApp
         async void UpdateControls()
         {
             await Dispatcher.RunAsync(Windows.UI.Core.CoreDispatcherPriority.Normal,
-                () =>
+                async () =>
                 {
-                    if (appServiceConnection == null)
+                    if (await IsAppServiceAppInstalled())
                     {
-                        loadAppServiceButton.IsEnabled = true;
-                        unloadAppServiceButton.IsEnabled = false;
-                        initAppServiceButton.IsEnabled = false;
-                        sendDataAppServiceButton.IsEnabled = false;
-                    }
-                    else
-                    {
-                        loadAppServiceButton.IsEnabled = false;
-                        unloadAppServiceButton.IsEnabled = true;
-                        if (appServiceConnectionInitialized == true)
+                        if (appServiceConnection == null)
                         {
+                            InstallAppServiceButton.IsEnabled = false;
+                            LaunchAppServiceButton.IsEnabled = true;
+                            ConnectAppServiceButton.IsEnabled = true;
+                            DisconnectAppServiceButton.IsEnabled = false;
                             initAppServiceButton.IsEnabled = false;
-                            sendDataAppServiceButton.IsEnabled = true;
+                            sendDataAppServiceButton.IsEnabled = false;
+                            DataText.IsEnabled = false;
                         }
                         else
                         {
-                            initAppServiceButton.IsEnabled = true;
-                            sendDataAppServiceButton.IsEnabled = false;
+                            InstallAppServiceButton.IsEnabled = false;
+                            LaunchAppServiceButton.IsEnabled = false;
+                            ConnectAppServiceButton.IsEnabled = false;
+                            DisconnectAppServiceButton.IsEnabled = true;
+                            if (appServiceConnectionInitialized == true)
+                            {
+                                initAppServiceButton.IsEnabled = false;
+                                sendDataAppServiceButton.IsEnabled = true;
+                                DataText.IsEnabled = true;
+                            }
+                            else
+                            {
+                                initAppServiceButton.IsEnabled = true;
+                                sendDataAppServiceButton.IsEnabled = false;
+                                DataText.IsEnabled = false;
+                            }
                         }
+                    }
+                    else
+                    {
+                        InstallAppServiceButton.IsEnabled = true;
+                        LaunchAppServiceButton.IsEnabled = false;
+                        ConnectAppServiceButton.IsEnabled = false;
+                        DisconnectAppServiceButton.IsEnabled = false;
+                        initAppServiceButton.IsEnabled = false;
+                        sendDataAppServiceButton.IsEnabled = false;
+                        DataText.IsEnabled = false;
+
                     }
                 });
         }
@@ -74,23 +95,78 @@ namespace AppServiceClientApp
             logs.TextChanged += Logs_TextChanged;
             UpdateControls();
         }
-        private async void LoadAppService_Click(object sender, RoutedEventArgs e)
+        async System.Threading.Tasks.Task<bool> IsAppServiceAppInstalled()
         {
             try
             {
                 var ret = await Windows.System.Launcher.QueryUriSupportAsync(new Uri("appserviceserverapp:\\"), Windows.System.LaunchQuerySupportType.Uri);
                 if (ret == LaunchQuerySupportStatus.Available)
                 {
+                    return true;
+                }
+
+            }
+            catch (Exception ex)
+            {
+                LogMessage("Failed to check App Service Installation - Exception: " + ex.Message);
+            }
+            return false;
+
+        }
+        private async void InstallAppService_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                LogMessage("Install App Service - Starting..." );
+                bool ret = await IsAppServiceAppInstalled();
+                if (ret == true)
+                {
+                    LogMessage("Install App Service - Already Installed...");
                     await Windows.System.Launcher.LaunchUriAsync(new Uri("appserviceserverapp:\\"));
+                    LogMessage("Install App Service - Successful");
                 }
                 else
                 {
+                    LogMessage("Install App Service - Installing from Windows Store...");
+                    // Install the appservice from the Store
                     await Windows.System.Launcher.LaunchUriAsync(new Uri(@"ms-windows-store://pdp/?ProductId=9n3zwbvdnng4"));
                 }
 
-                
+            }
+            catch (Exception ex)
+            {
+                LogMessage("Failed to Install App Service - Exception: " + ex.Message);
+            }
+        }
+        private async void LaunchAppService_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                LogMessage("Launch App Service - Starting..." );
+                bool ret = await IsAppServiceAppInstalled();
+                if (ret == true)
+                {
+                    await Windows.System.Launcher.LaunchUriAsync(new Uri("appserviceserverapp:\\"));
+                    LogMessage("Launch App Service - Successful");
+                }
+                else
+                {
+                    LogMessage("Launch App Service - App not installed...");
+                }
+
+            }
+            catch (Exception ex)
+            {
+                LogMessage("Failed to launch App Service - Exception: " + ex.Message);
+            }
+        }
+        private async void ConnectAppService_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
                 if (appServiceConnection == null)
                 {
+                    LogMessage("Connect to App Service");
                     appServiceConnection = new AppServiceConnection();
                     appServiceConnection.AppServiceName = AppServiceTaskConstant.APPSERVICENAME;
                     //appServiceConnection.PackageFamilyName = Windows.ApplicationModel.Package.Current.Id.FamilyName;
@@ -99,26 +175,27 @@ namespace AppServiceClientApp
                     if (status != AppServiceConnectionStatus.Success)
                     {
                         appServiceConnection = null;
-                        LogMessage("Failed to load App Service");
+                        LogMessage("Failed to Connect to App Service");
                     }
                     else
                     {
                         appServiceConnection.RequestReceived += AppServiceConnection_RequestReceived;
                         appServiceConnection.ServiceClosed += AppServiceConnection_ServiceClosed;
-                        LogMessage("Load App Service successful");
+                        LogMessage("Connect to App Service successful");
                     }
                 }
                 UpdateControls();
             }
             catch (Exception ex)
             {
-                LogMessage("Failed to load App Service - Exception: " + ex.Message);
+                LogMessage("Failed to Connect to App Service - Exception: " + ex.Message);
             }
         }
         private async void InitAppService_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                LogMessage("Send Initialize Command to App Service");
                 if (appServiceConnection != null)
                 {
                     var message = new ValueSet();
@@ -126,12 +203,11 @@ namespace AppServiceClientApp
                     {
                         message.Add(AppServiceTaskConstant.COMMAND_FIELD, AppServiceTaskConstant.COMMAND_FIELD_INIT_VALUE);
                         message.Add(AppServiceTaskConstant.SOURCE_FIELD, AppServiceTaskConstant.SOURCE_FIELD_REMOTE_VALUE);
-                        message.Add(AppServiceTaskConstant.IPSOURCE_FIELD, AppServiceTaskConstant.SOURCE_FIELD_LOCAL_VALUE);
                         AppServiceResponse response = await appServiceConnection.SendMessageAsync(message);
                         if (response.Status != AppServiceResponseStatus.Success)
                         {
                             appServiceConnectionInitialized = false;
-                            LogMessage("Failed to initialize App Service");
+                            LogMessage("Failed to Send Initialize Command to App Service");
                         }
                         else
                         {
@@ -142,12 +218,12 @@ namespace AppServiceClientApp
                                 if (string.Equals(result, AppServiceTaskConstant.RESULT_FIELD_OK_VALUE))
                                 {
                                     appServiceConnectionInitialized = true;
-                                    LogMessage("Initialize App Service successful");
+                                    LogMessage("Send Initialize Command to App Service successful");
                                 }
                                 else
                                 {
                                     appServiceConnectionInitialized = false;
-                                    LogMessage("Failed to Initialize App Service: " + result);
+                                    LogMessage("Failed to Send Initialize Command to Initialize App Service: " + result);
                                 }
                             }
                         }
@@ -157,13 +233,15 @@ namespace AppServiceClientApp
             }
             catch (Exception ex)
             {
-                LogMessage("Failed to initialize communication with App Service: " + ex.Message);
+                LogMessage("Failed to Send Initialize Command to communication with App Service: " + ex.Message);
             }
         }
         private async void SendDataAppService_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                string payload = DataText.Text;
+                LogMessage("Send Data to App Service: " + payload);
                 if ((appServiceConnection != null) && (appServiceConnectionInitialized == true))
                 {
                     var message = new ValueSet();
@@ -171,8 +249,7 @@ namespace AppServiceClientApp
                     {
                         message.Add(AppServiceTaskConstant.COMMAND_FIELD, AppServiceTaskConstant.COMMAND_FIELD_DATA_VALUE);
                         message.Add(AppServiceTaskConstant.SOURCE_FIELD, AppServiceTaskConstant.SOURCE_FIELD_REMOTE_VALUE);
-                        message.Add(AppServiceTaskConstant.IPSOURCE_FIELD, AppServiceTaskConstant.SOURCE_FIELD_LOCAL_VALUE);
-                        message.Add(AppServiceTaskConstant.DATA_FIELD, "Hello from local app");
+                        message.Add(AppServiceTaskConstant.DATA_FIELD, payload);
                         AppServiceResponse response = await appServiceConnection.SendMessageAsync(message);
                         if (response.Status != AppServiceResponseStatus.Success)
                         {
@@ -203,20 +280,20 @@ namespace AppServiceClientApp
                 LogMessage("Failed to send data to App Service: " + ex.Message);
             }
         }
-        private void UnloadAppService_Click(object sender, RoutedEventArgs e)
+        private void DisconnectAppService_Click(object sender, RoutedEventArgs e)
         {
             try
             {
                 if (appServiceConnection != null)
                 {
                     CloseAppServiceConnection();
-                    LogMessage("Unload App Service successful");
+                    LogMessage("Disconnect App Service successful");
                 }
                 UpdateControls();
             }
             catch (Exception ex)
             {
-                LogMessage("Failed to unload App Service - Exception: " + ex.Message);
+                LogMessage("Failed to Disconnect App Service - Exception: " + ex.Message);
             }
         }
         void CloseAppServiceConnection()
@@ -250,14 +327,12 @@ namespace AppServiceClientApp
                         if (string.Equals(s, AppServiceTaskConstant.COMMAND_FIELD_DATA_VALUE))
                         {
                             if ((inputs.ContainsKey(AppServiceTaskConstant.DATA_FIELD)) &&
-                            (inputs.ContainsKey(AppServiceTaskConstant.SOURCE_FIELD)) &&
-                            (inputs.ContainsKey(AppServiceTaskConstant.IPSOURCE_FIELD)))
+                            (inputs.ContainsKey(AppServiceTaskConstant.SOURCE_FIELD)) )
                             {
                                 string data = (string)inputs[AppServiceTaskConstant.DATA_FIELD];
                                 string source = (string)inputs[AppServiceTaskConstant.SOURCE_FIELD];
-                                string ip = (string)inputs[AppServiceTaskConstant.IPSOURCE_FIELD];
 
-                                LogMessage("Receive Message from " + source + " ip: " + ip + " message: " + data);
+                                LogMessage("Receive Message from " + source + " message: " + data);
                                 response = AppServiceTaskConstant.RESULT_FIELD_OK_VALUE;
                             }
                         }

@@ -37,28 +37,31 @@ namespace AppServiceServerApp
         void UpdateControls()
         {
 
-                    if (appServiceConnection == null)
-                    {
-                        loadAppServiceButton.IsEnabled = true;
-                        unloadAppServiceButton.IsEnabled = false;
-                        initAppServiceButton.IsEnabled = false;
-                        sendDataAppServiceButton.IsEnabled = false;
-                    }
-                    else
-                    {
-                        loadAppServiceButton.IsEnabled = false;
-                        unloadAppServiceButton.IsEnabled = true;
-                        if (appServiceConnectionInitialized == true)
-                        {
-                            initAppServiceButton.IsEnabled = false;
-                            sendDataAppServiceButton.IsEnabled = true;
-                        }
-                        else
-                        {
-                            initAppServiceButton.IsEnabled = true;
-                            sendDataAppServiceButton.IsEnabled = false;
-                        }
-                    }
+            if (appServiceConnection == null)
+            {
+                ConnectAppServiceButton.IsEnabled = true;
+                DisconnectAppServiceButton.IsEnabled = false;
+                initAppServiceButton.IsEnabled = false;
+                sendDataAppServiceButton.IsEnabled = false;
+                DataText.IsEnabled = false;
+            }
+            else
+            {
+                ConnectAppServiceButton.IsEnabled = false;
+                DisconnectAppServiceButton.IsEnabled = true;
+                if (appServiceConnectionInitialized == true)
+                {
+                    initAppServiceButton.IsEnabled = false;
+                    sendDataAppServiceButton.IsEnabled = true;
+                    DataText.IsEnabled = true;
+                }
+                else
+                {
+                    initAppServiceButton.IsEnabled = true;
+                    sendDataAppServiceButton.IsEnabled = false;
+                    DataText.IsEnabled = false;
+                }
+            }
         }
         protected  override void OnNavigatedTo(NavigationEventArgs e)
         {
@@ -67,10 +70,11 @@ namespace AppServiceServerApp
             logs.TextChanged += Logs_TextChanged;
             UpdateControls();
         }
-        private async void LoadAppService_Click(object sender, RoutedEventArgs e)
+        private async void ConnectAppService_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                LogMessage("Connect to App Service");
                 if (appServiceConnection == null)
                 {
                     appServiceConnection = new AppServiceConnection();
@@ -81,36 +85,37 @@ namespace AppServiceServerApp
                     if (status != AppServiceConnectionStatus.Success)
                     {
                         appServiceConnection = null;
-                        LogMessage("Failed to load App Service");
+                        LogMessage("Failed to Connect to App Service");
                     }
                     else
                     {
                         appServiceConnection.RequestReceived += AppServiceConnection_RequestReceived;
                         appServiceConnection.ServiceClosed += AppServiceConnection_ServiceClosed;
-                        LogMessage("Load App Service successful");
+                        LogMessage("Connect to App Service successful");
                     }
                 }
                 UpdateControls();
             }
             catch (Exception ex)
             {
-                LogMessage("Failed to load App Service - Exception: " + ex.Message);
+                LogMessage("Failed to Connect to App Service - Exception: " + ex.Message);
             }
         }
-        private void UnloadAppService_Click(object sender, RoutedEventArgs e)
+        private void DisconnectAppService_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                LogMessage("Disconnect App Service");
                 if (appServiceConnection != null)
                 {
                     CloseAppServiceConnection();
-                    LogMessage("Unload App Service successful");
+                    LogMessage("Disconnect App Service successful");
                 }
                 UpdateControls();
             }
             catch (Exception ex)
             {
-                LogMessage("Failed to unload App Service - Exception: " + ex.Message);
+                LogMessage("Failed to Disconnect App Service - Exception: " + ex.Message);
             }
         }
         void CloseAppServiceConnection()
@@ -149,14 +154,12 @@ namespace AppServiceServerApp
                         if (string.Equals(s, AppServiceTaskConstant.COMMAND_FIELD_DATA_VALUE))
                         {
                             if ((inputs.ContainsKey(AppServiceTaskConstant.DATA_FIELD)) &&
-                            (inputs.ContainsKey(AppServiceTaskConstant.SOURCE_FIELD)) &&
-                            (inputs.ContainsKey(AppServiceTaskConstant.IPSOURCE_FIELD)))
+                            (inputs.ContainsKey(AppServiceTaskConstant.SOURCE_FIELD)) )
                             {
                                 string data = (string)inputs[AppServiceTaskConstant.DATA_FIELD];
                                 string source = (string)inputs[AppServiceTaskConstant.SOURCE_FIELD];
-                                string ip = (string)inputs[AppServiceTaskConstant.IPSOURCE_FIELD];
 
-                                LogMessage("Receive Message from " + source + " ip: " + ip + " message: " + data);
+                                LogMessage("Receive Message from " + source +" message: " + data);
                                 response = AppServiceTaskConstant.RESULT_FIELD_OK_VALUE;
                             }
                         }
@@ -179,6 +182,7 @@ namespace AppServiceServerApp
         {
             try
             {
+                LogMessage("Send Initialize Command to App Service");
                 if (appServiceConnection != null)
                 {
                     var message = new ValueSet();
@@ -186,12 +190,11 @@ namespace AppServiceServerApp
                     {
                         message.Add(AppServiceTaskConstant.COMMAND_FIELD, AppServiceTaskConstant.COMMAND_FIELD_INIT_VALUE);
                         message.Add(AppServiceTaskConstant.SOURCE_FIELD, AppServiceTaskConstant.SOURCE_FIELD_LOCAL_VALUE);
-                        message.Add(AppServiceTaskConstant.IPSOURCE_FIELD, AppServiceTaskConstant.SOURCE_FIELD_LOCAL_VALUE);
                         AppServiceResponse response = await appServiceConnection.SendMessageAsync(message);
                         if (response.Status != AppServiceResponseStatus.Success)
                         {
                             appServiceConnectionInitialized = false;
-                            LogMessage("Failed to initialize App Service");
+                            LogMessage("Failed to Send Initialize Command to App Service");
                         }
                         else
                         {
@@ -202,12 +205,12 @@ namespace AppServiceServerApp
                                 if (string.Equals(result, AppServiceTaskConstant.RESULT_FIELD_OK_VALUE))
                                 {
                                     appServiceConnectionInitialized = true;
-                                    LogMessage("Initialize App Service successful");
+                                    LogMessage("Send Initialize Command to App Service successful");
                                 }
                                 else
                                 {
                                     appServiceConnectionInitialized = false;
-                                    LogMessage("Failed to Initialize App Service: " + result);
+                                    LogMessage("Failed to Send Initialize Command to Initialize App Service: " + result);
                                 }
                             }
                         }
@@ -217,13 +220,15 @@ namespace AppServiceServerApp
             }
             catch (Exception ex)
             {
-                LogMessage("Failed to initialize communication with App Service: " + ex.Message);
+                LogMessage("Failed to Send Initialize Command to App Service: " + ex.Message);
             }
         }
         private async void SendDataAppService_Click(object sender, RoutedEventArgs e)
         {
             try
             {
+                string payload = DataText.Text;
+                LogMessage("Send Data to App Service: " + payload);
                 if ((appServiceConnection != null)&&(appServiceConnectionInitialized == true ))
                 {
                     var message = new ValueSet();
@@ -231,12 +236,11 @@ namespace AppServiceServerApp
                     {
                         message.Add(AppServiceTaskConstant.COMMAND_FIELD, AppServiceTaskConstant.COMMAND_FIELD_DATA_VALUE);
                         message.Add(AppServiceTaskConstant.SOURCE_FIELD, AppServiceTaskConstant.SOURCE_FIELD_LOCAL_VALUE);
-                        message.Add(AppServiceTaskConstant.IPSOURCE_FIELD, AppServiceTaskConstant.SOURCE_FIELD_LOCAL_VALUE);
-                        message.Add(AppServiceTaskConstant.DATA_FIELD, "Hello from local app");
+                        message.Add(AppServiceTaskConstant.DATA_FIELD, payload);
                         AppServiceResponse response = await appServiceConnection.SendMessageAsync(message);
                         if (response.Status != AppServiceResponseStatus.Success)
                         {
-                            LogMessage("Failed to send data to App Service");
+                            LogMessage("Failed to Send Data to App Service");
                         }
                         else
                         {
@@ -250,7 +254,7 @@ namespace AppServiceServerApp
                                 }
                                 else
                                 {
-                                    LogMessage("Failed to send data to App Service: " + result);
+                                    LogMessage("Failed to Send Data to App Service: " + result);
                                 }
                             }
                         }
@@ -260,7 +264,7 @@ namespace AppServiceServerApp
             }
             catch (Exception ex)
             {
-                LogMessage("Failed to send data to App Service: " + ex.Message);
+                LogMessage("Failed to Send Data to App Service: " + ex.Message);
             }
         }
 

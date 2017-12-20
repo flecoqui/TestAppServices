@@ -17,7 +17,6 @@ namespace AppServiceTask
         public static string SOURCE_FIELD_LOCAL_VALUE = "localapp";
         public static string SOURCE_FIELD_REMOTE_VALUE = "remoteapp";
         public static string SOURCE_FIELD_APPSERVICE_VALUE = "appservice";
-        public static string IPSOURCE_FIELD = "ipsrc";
         public static string DATA_FIELD = "data";
         public static string RESULT_FIELD = "result";
         public static string RESULT_FIELD_OK_VALUE = "ok";
