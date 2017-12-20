@@ -26,52 +26,52 @@ Once the application is installed on your device, you can launch it and the main
 
 ### Step 1: Communication between 2 UWP Applications using AppServices
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1.png)
 
 
 The application is used to play videos, audios and photos. By default you can select in the combo box `Select a stream` the asset you can to play.   
 
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1AppServiceClientApp.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp.png)
 
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1AppServiceClientApp_1.png)
-
-
-
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1AppServiceClientApp_2.png)
-
-
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1AppServiceClientApp_3.png)
-
-
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1AppServiceServerApp.png)
-
-
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1AppServiceServerApp_1.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_1.png)
 
 
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1AppServiceServerApp_2.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_2.png)
 
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step1AppServiceServerApp_3.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceClientApp_3.png)
+
+
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceServerApp.png)
+
+
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceServerApp_1.png)
+
+
+
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceServerApp_2.png)
+
+
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step1AppServiceServerApp_3.png)
 
 
 ### Step 2: Communication between UWP Application and Win32 Application using AppServices
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step2.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step2.png)
 
 The application is used to play videos, audios and photos. By default you can select in the combo box `Select a stream` the asset you can to play.   
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step2AppServiceServerApp.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step2AppServiceServerApp.png)
 
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step2AppServiceServerApp_1.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step2AppServiceServerApp_1.png)
 
 
 
-![](https://raw.githubusercontent.com/flecoqui/Windows10/master/Samples/TestAppServices/Docs/Step2AppServiceServerApp_2.png)
+![](https://raw.githubusercontent.com/flecoqui/TestAppServices/master/Docs/Step2AppServiceServerApp_2.png)
 
 
 
